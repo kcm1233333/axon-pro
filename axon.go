@@ -439,6 +439,61 @@ func  Payment (w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	w.Write(output)  
 }
+func  ShopList (w http.ResponseWriter, r *http.Request) {
+ psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+    "password=%s dbname=%s sslmode=disable",
+    host, port, user, password, dbname)
+  db, err := sql.Open("postgres", psqlInfo)
+  if err != nil {
+    panic(err)
+  }
+  defer db.Close()
+
+  err = db.Ping()
+  if err != nil {
+    panic(err)
+  }
+
+  fmt.Println("Successfully connected!")
+  
+    b, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	keyVal := make(map[string]string)
+	json.Unmarshal(b, &keyVal)
+	kodepengguna := keyVal["kodepengguna"]
+	
+		
+  lookStmt := `select  namabarang,hargabarang from keranjang as k, barang as b where k.kodebarang=b.kodebarang and k.kodepengguna=$1`
+  look, e := db.Query(lookStmt, kodepengguna)
+   CheckError(e)
+  
+for look.Next() {
+  var namabarang string
+  var hargabarang int
+  //answer := &Answer{}
+  look.Scan(&namabarang,&hargabarang)
+  
+  data := [] struct {
+        NamaBarang string
+		HargaBarang int
+        
+    } {
+        { namabarang, hargabarang},
+        
+    }
+	output, err := json.Marshal(data)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(output)  
+ }
+}
 func main() {
     log.Println("Please do something on it !")
     http.HandleFunc("/registration", Registration)
@@ -449,5 +504,6 @@ func main() {
 	http.HandleFunc("/deletecart", DeleteCart)
 	http.HandleFunc("/money", Uang)
 	http.HandleFunc("/payment", Payment)
+	http.HandleFunc("/shoplist", ShopList)
     http.ListenAndServe(":5051", nil)
 }
